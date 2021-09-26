@@ -1,0 +1,161 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  LambdaWithS3AccessRoleArn:
+    Type: String
+    Default: arn:aws:iam::771384749710:role/lambda-with-s3-access-role
+Resources:
+  SendCommandToPiQueue:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: SendCommandToPiQueue
+      Code: ./
+      Handler: "sendCommandToPiQueueLambdaHandler.handler"
+      Runtime: "nodejs12.x"
+      Role: !Ref LambdaWithS3AccessRoleArn
+      Timeout: 60
+  SmartDropOffBoxApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      ApiKeySourceType: HEADER
+      Description: API for smart drop off box
+      Name: smart-drop-off-box-api
+  typePathResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt SmartDropOffBoxApi.RootResourceId
+      PathPart: '{type}'
+      RestApiId: !Ref SmartDropOffBoxApi
+  SendCommandToPiQueueResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt SmartDropOffBoxApi.RootResourceId
+      PathPart: 'command'
+      RestApiId: !Ref SmartDropOffBoxApi
+  ApiGatewayModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      ContentType: 'application/json'
+      RestApiId: !Ref SmartDropOffBoxApi
+      Schema: { }
+  ApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: SendCommandToPiQueueGatewayMethod
+    Properties:
+      Description: Deployment for smart drop off box api
+      RestApiId: !Ref SmartDropOffBoxApi
+  ApiGatewayStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      DeploymentId: !Ref ApiGatewayDeployment
+      Description: Prod API Stage
+      RestApiId: !Ref SmartDropOffBoxApi
+      StageName: prod
+  ApiGatewayIamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: ''
+            Effect: 'Allow'
+            Principal:
+              Service:
+                - 'apigateway.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
+      Path: '/'
+  ApiGatewayPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: "LambdaAccess"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: 'Allow'
+            Action: 'lambda:*'
+            Resource: !GetAtt SendCommandToPiQueue.Arn
+      Roles:
+        - !Ref ApiGatewayIamRole
+  LambdaApiGatewayInvoke:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "SendCommandToPiQueue.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${SmartDropOffBoxApi}/*/*
+  SendCommandToPiQueueGatewayMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      ApiKeyRequired: true
+      AuthorizationType: NONE
+      HttpMethod: GET
+      RequestParameters:
+        method.request.path.type: true
+      Integration:
+        Credentials: !GetAtt ApiGatewayIamRole.Arn
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - ResponseTemplates: { "application/json": "" }
+            ResponseParameters:
+              method.response.header.X-Requested-With: "'*'"
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,x-requested-with'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: 200
+        PassthroughBehavior: WHEN_NO_TEMPLATES
+        RequestTemplates:
+          application/json: "{ \"type\": \"$input.params('type')\"}"
+        TimeoutInMillis: 29000
+        Type: AWS
+        Uri: !Sub
+          - 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations'
+          - lambdaArn: !GetAtt "SendCommandToPiQueue.Arn"
+      MethodResponses:
+        - ResponseModels:
+            application/json: 'Empty'
+          ResponseParameters:
+            method.response.header.X-Requested-With: false
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+          StatusCode: 200
+      OperationName: 'Send Command to Pi Queue'
+      ResourceId: !Ref SendCommandToPiQueueResource
+      RestApiId: !Ref SmartDropOffBoxApi
+  OptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      RestApiId:
+        Ref: SmartDropOffBoxApi
+      ResourceId:
+        Ref: SendCommandToPiQueueResource
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ''
+        PassthroughBehavior: WHEN_NO_MATCH
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        Type: MOCK
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: 'Empty'
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: false
+            method.response.header.Access-Control-Allow-Methods: false
+            method.response.header.Access-Control-Allow-Origin: false
+Outputs:
+  MainEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage for Update Schedule Function"
+    Value: !Sub "https://${SmartDropOffBoxApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}/"
+  SendCommandToPiQueueEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage for Completed Submissions Function"
+    Value: !Sub "https://${SmartDropOffBoxApi}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStage}/command/{type}/"
