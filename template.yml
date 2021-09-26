@@ -19,10 +19,11 @@ Resources:
       ApiKeySourceType: HEADER
       Description: API for smart drop off box
       Name: smart-drop-off-box-api
-  typePathResource:
+  TypePathResource:
     Type: AWS::ApiGateway::Resource
     Properties:
-      ParentId: !GetAtt SmartDropOffBoxApi.RootResourceId
+      ParentId:
+        Ref: SendCommandToPiQueueResource
       PathPart: '{type}'
       RestApiId: !Ref SmartDropOffBoxApi
   SendCommandToPiQueueResource:
