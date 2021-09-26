@@ -28,7 +28,7 @@ jobs:
           name: Deploy to API and Lambdas
           command: |
             sam package --template-file template.yml --output-template-file packaged.yaml --s3-bucket smart-drop-off-box-lake --s3-prefix cloudformation-templates/smart-drop-off-box-api-v2 --force-upload
-            sam deploy --template-file packaged.yaml --stack-name smart-drop-off-box-api-v2 --capabilities CAPABILITY_IAM --parameter-overrides JotformApiKey=${JOTFORM_API_KEY}
+            sam deploy --template-file packaged.yaml --stack-name smart-drop-off-box-api-v2 --capabilities CAPABILITY_IAM
 workflows:
   build-and-deploy:
     jobs:
