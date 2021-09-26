@@ -130,7 +130,7 @@ Resources:
       RestApiId:
         Ref: SmartDropOffBoxApi
       ResourceId:
-        Ref: SendCommandToPiQueueResource
+        Ref: TypePathResource
       HttpMethod: OPTIONS
       Integration:
         IntegrationResponses:
