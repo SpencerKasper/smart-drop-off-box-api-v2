@@ -7,7 +7,8 @@ exports.handler = async function (event) {
 
         const snsClient = new SNSClient();
         const snsMessage = {
-            Message: JSON.stringify({commandType, MessageGroupId: 'a-group'}),
+            Message: JSON.stringify({commandType}),
+            MessageAttributes: {MessageGroupId: {DataType: 'String', StringValue: 'a-group'}},
             TopicArn: 'arn:aws:sns:us-east-1:771384749710:smart-drop-off-box-sns-topic.fifo'
         };
         const result = await snsClient.publishSNSMessage(snsMessage);
