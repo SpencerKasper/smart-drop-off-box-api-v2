@@ -16,7 +16,6 @@ Resources:
   SmartDropOffBoxApi:
     Type: AWS::ApiGateway::RestApi
     Properties:
-      ApiKeySourceType: HEADER
       Description: API for smart drop off box
       Name: smart-drop-off-box-api
   TypePathResource:
@@ -87,7 +86,6 @@ Resources:
   SendCommandToPiQueueGatewayMethod:
     Type: AWS::ApiGateway::Method
     Properties:
-      ApiKeyRequired: true
       AuthorizationType: NONE
       HttpMethod: GET
       RequestParameters:
