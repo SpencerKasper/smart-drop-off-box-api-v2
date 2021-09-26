@@ -121,7 +121,7 @@ Resources:
             method.response.header.Access-Control-Allow-Origin: false
           StatusCode: 200
       OperationName: 'Send Command to Pi Queue'
-      ResourceId: !Ref SendCommandToPiQueueResource
+      ResourceId: !Ref TypePathResource
       RestApiId: !Ref SmartDropOffBoxApi
   OptionsMethod:
     Type: AWS::ApiGateway::Method
